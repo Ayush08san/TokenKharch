@@ -1,0 +1,27 @@
+{
+  "_meta": {
+    "unit": "USD per 1M tokens",
+    "updated": "2026-10-04",
+    "sources": {
+      "anthropic": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "openai": "https://curlscape.com/blog/openai-api-pricing-guide-2026 (third-party, Feb 2026)",
+      "google": "https://www.morphllm.com/gemini-api-pricing (third-party, Aug 2026; base tier <=200k context)"
+    },
+    "note": "Prices change. Re-check before a demo and edit this file - no code change needed."
+  },
+  "models": {
+    "claude-opus-5-5":    {"provider": "anthropic", "input": 4.00, "output": 20.00, "cache_read": 0.20},
+    "claude-sonnet-5-5":  {"provider": "anthropic", "input": 2.00, "output": 10.00, "cache_read": 0.20},
+    "claude-haiku-4-5":   {"provider": "anthropic", "input": 1.00, "output": 5.00,  "cache_read": 0.10},
+    "claude-sonnet-4-6":  {"provider": "anthropic", "input": 3.00, "output": 15.00, "cache_read": 0.30},
+    "gpt-5.2":            {"provider": "openai",    "input": 1.75, "output": 14.00},
+    "gpt-5":              {"provider": "openai",    "input": 1.25, "output": 10.00},
+    "gpt-5-mini":         {"provider": "openai",    "input": 0.25, "output": 2.00},
+    "gpt-4o-mini":        {"provider": "openai",    "input": 0.15, "output": 0.60},
+    "gemini-3.1-pro":     {"provider": "google",    "input": 2.00, "output": 12.00},
+    "gemini-3-flash":     {"provider": "google",    "input": 0.50, "output": 3.00},
+    "gemini-2.5-flash":   {"provider": "google",    "input": 0.30, "output": 2.50}
+  },
+  "default_model": "claude-sonnet-5-5",
+  "usd_to_inr": 88.0
+}
