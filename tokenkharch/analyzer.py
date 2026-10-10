@@ -1,4 +1,3 @@
-"""Static analysis of a prompt: finds patterns that waste tokens. Every token_impact is *measured* with the tokenizer."""
 from __future__ import annotations
 
 import re

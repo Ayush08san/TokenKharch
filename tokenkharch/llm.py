@@ -1,4 +1,3 @@
-"""Thin wrapper over the Anthropic Messages API, with an offline demo mode so a live demo never dies on bad Wi-Fi."""
 from __future__ import annotations
 
 import os
@@ -32,7 +31,7 @@ def call_claude(prompt: str, model: str, max_tokens: int = 512, document: str | 
         msg = client.messages.create(model=model, max_tokens=max_tokens,
                                      messages=[{"role": "user", "content": content}])
         latency = int((time.perf_counter() - t0) * 1000)
-        text = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
+        text = "".join(b.text for b in msg.content if b.type == "text")
         return {"text": text, "input_tokens": msg.usage.input_tokens, "output_tokens": msg.usage.output_tokens,
                 "latency_ms": latency, "demo": False, "error": None}
     except Exception as e:  # surface a clean error instead of a stack trace in the UI

@@ -1,4 +1,3 @@
-"""TokenKharch - know your token kharch (spend) before you hit send."""
 from pathlib import Path
 
 try:
