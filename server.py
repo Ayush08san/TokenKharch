@@ -1,9 +1,11 @@
-"""TokenKharch MCP server - exposes the token/cost tools to any MCP client (Claude Desktop, Claude Code, Cursor...).
+"""TokenKharch MCP server - exposes the token/cost tools to any MCP client (Claude, ChatGPT, Cursor...).
 
-Run:  python server.py            (stdio transport, what Claude Desktop expects)
+Run:  python server.py                       stdio transport (Claude Desktop, Claude Code, Cursor)
+      python server.py --http [--port 8000]  streamable HTTP at /mcp (ChatGPT, remote clients)
 """
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 from typing import Optional
 
@@ -74,5 +76,19 @@ def list_models() -> list[dict]:
     return service.models()
 
 
+@mcp.tool
+def status() -> dict:
+    """Which tokenizer is active, whether a real Claude API key is loaded (else demo mode), and the default model."""
+    return service.status()
+
+
 if __name__ == "__main__":
-    mcp.run()
+    ap = argparse.ArgumentParser(description="TokenKharch MCP server")
+    ap.add_argument("--http", action="store_true", help="serve over streamable HTTP instead of stdio")
+    ap.add_argument("--host", default="127.0.0.1")
+    ap.add_argument("--port", type=int, default=8000)
+    args = ap.parse_args()
+    if args.http:
+        mcp.run(transport="http", host=args.host, port=args.port)
+    else:
+        mcp.run()

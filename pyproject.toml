@@ -1,16 +1,15 @@
 [project]
 name = "tokenkharch"
 version = "1.0.0"
-description = "Know your LLM token spend before you hit send: token counting, cost estimation and prompt optimization as an MCP server + web dashboard."
+description = "Know your LLM token spend before you hit send: token counting, cost estimation and prompt optimization as an MCP server for Claude, ChatGPT and other MCP clients."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-  "fastmcp>=2.10", "fastapi>=0.110", "uvicorn>=0.27", "pydantic>=2.5",
-  "tiktoken>=0.7", "anthropic>=0.40", "python-dotenv>=1.0",
+  "fastmcp>=2.10", "tiktoken>=0.7", "anthropic>=0.40", "python-dotenv>=1.0",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "httpx>=0.27"]
+dev = ["pytest>=8.0"]
 
 [tool.setuptools]
 packages = ["tokenkharch"]

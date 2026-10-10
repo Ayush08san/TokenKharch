@@ -3,10 +3,9 @@ import os
 import tempfile
 
 os.environ["TOKENKHARCH_DB"] = os.path.join(tempfile.mkdtemp(), "test.db")
-os.environ.pop("ANTHROPIC_API_KEY", None)  # tests must never hit the real API
+os.environ["ANTHROPIC_API_KEY"] = ""  # blank, not unset, so load_dotenv() cannot restore a real key from .env
 
 import pytest
-from fastapi.testclient import TestClient
 
 from tokenkharch import pricing, service, store
 from tokenkharch.analyzer import analyze, efficiency_score
@@ -82,18 +81,6 @@ def test_send_demo_mode_logs_to_ledger():
     assert t["requests"] == 1 and t["tokens_saved"] > 0 and t["cost_usd"] == 0
 
 
-def test_http_api():
-    from app import app
-    c = TestClient(app)
-    assert c.get("/").status_code == 200
-    a = c.post("/api/analyze", json={"prompt": VERBOSE}).json()
-    assert a["tokens"]["total_input"] > 0 and a["issues"]
-    assert c.post("/api/analyze", json={"prompt": "x", "model": "nope"}).status_code == 400
-    assert c.post("/api/analyze", json={"prompt": ""}).status_code == 422
-    o = c.post("/api/optimize", json={"prompt": VERBOSE, "mode": "safe"}).json()
-    assert o["mode"] == "safe"
-
-
 def test_mcp_tools_registered_and_callable():
     from fastmcp import Client
     from server import mcp
@@ -101,7 +88,9 @@ def test_mcp_tools_registered_and_callable():
     async def go():
         async with Client(mcp) as client:
             names = {t.name for t in await client.list_tools()}
-            assert {"analyze_prompt", "optimize_prompt", "send_to_claude", "usage_report"} <= names
+            assert {"analyze_prompt", "optimize_prompt", "send_to_claude", "usage_report", "status"} <= names
             res = await client.call_tool("optimize_prompt", {"prompt": VERBOSE})
             assert res.data["tokens_saved"] > 0
+            res = await client.call_tool("analyze_prompt", {"prompt": VERBOSE})
+            assert res.data["tokens"]["total_input"] > 0 and res.data["issues"]
     asyncio.run(go())

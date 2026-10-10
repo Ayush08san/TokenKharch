@@ -6,8 +6,7 @@
       "anthropic": "https://platform.claude.com/docs/en/about-claude/pricing",
       "openai": "https://curlscape.com/blog/openai-api-pricing-guide-2026 (third-party, Feb 2026)",
       "google": "https://www.morphllm.com/gemini-api-pricing (third-party, Aug 2026; base tier <=200k context)"
-    },
-    "note": "Prices change. Re-check before a demo and edit this file - no code change needed."
+    }
   },
   "models": {
     "claude-opus-5-5":    {"provider": "anthropic", "input": 4.00, "output": 20.00, "cache_read": 0.20},

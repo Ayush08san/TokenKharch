@@ -1,6 +1,6 @@
-"""Use-case layer. Both the MCP server and the web API call these functions, so logic lives in exactly one place."""
-from __future__ import annotations
+# main logic file
 
+from __future__ import annotations
 from . import llm, pricing, store
 from .analyzer import analyze, efficiency_score
 from .optimizer import optimize
@@ -8,9 +8,9 @@ from .tokenizer import count_claude_exact, count_tokens, method
 
 
 def analyze_prompt(prompt: str, document: str | None = None, model: str | None = None,
-                   expected_output_tokens: int = 500, source: str = "web", exact: bool = False) -> dict:
+                   expected_output_tokens: int = 500, source: str = "mcp", exact: bool = False) -> dict:
     model = model or pricing.default_model()
-    pricing.get_price(model)  # validate early
+    pricing.get_price(model)  
     prompt_tokens = count_tokens(prompt)
     doc_tokens = count_tokens(document) if document else 0
     total_input = prompt_tokens + doc_tokens
@@ -54,7 +54,7 @@ def optimize_prompt(prompt: str, mode: str = "aggressive", model: str | None = N
 
 
 def send(prompt: str, model: str | None = None, max_tokens: int = 512, document: str | None = None,
-         auto_optimize: bool = True, mode: str = "aggressive", source: str = "web",
+         auto_optimize: bool = True, mode: str = "aggressive", source: str = "mcp",
          force_demo: bool = False) -> dict:
     model = model or pricing.default_model()
     opt = optimize_prompt(prompt, mode, model, max_tokens) if auto_optimize else None

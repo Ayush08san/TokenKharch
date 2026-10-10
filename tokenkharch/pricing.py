@@ -1,4 +1,4 @@
-"""Model price table + cost maths. Prices live in pricing.json so they can be updated without touching code."""
+# Model Pricing tables
 from __future__ import annotations
 
 import json
