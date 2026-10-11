@@ -11,7 +11,7 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS usage (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     ts             TEXT    NOT NULL,
-    source         TEXT    NOT NULL,   -- web | mcp | cli
+    source         TEXT    NOT NULL,   -- mcp | cli
     kind           TEXT    NOT NULL,   -- analyze | send
     model          TEXT    NOT NULL,
     input_tokens   INTEGER NOT NULL DEFAULT 0,
@@ -28,7 +28,7 @@ CREATE INDEX IF NOT EXISTS idx_usage_ts ON usage(ts);
 
 def db_path() -> Path:
     default = Path(__file__).resolve().parent.parent / "data" / "tokenkharch.db"
-    return Path(os.environ.get("TOKENKHARCH_DB", default))
+    return Path(os.environ.get("TOKENKHARCH_DB") or default)
 
 
 @contextmanager
@@ -55,7 +55,8 @@ def log(*, source: str, kind: str, model: str, input_tokens: int, output_tokens:
             (datetime.now(timezone.utc).isoformat(timespec="seconds"), source, kind, model,
              input_tokens, output_tokens, tokens_saved, cost_usd, saved_usd, int(demo), preview[:120]),
         )
-        return int(cur.lastrowid)
+        row_id = cur.lastrowid
+        return int(row_id) if row_id is not None else 0
 
 
 def stats() -> dict:

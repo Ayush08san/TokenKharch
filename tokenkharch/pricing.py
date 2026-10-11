@@ -18,12 +18,12 @@ class ModelPrice:
     output: float         # USD per 1M output tokens
     cache_read: float | None = None
 
-
+#loading Json file. Needs TTL cache for live updates
 @lru_cache(maxsize=1)
 def _load() -> dict:
     return json.loads(PRICING_FILE.read_text(encoding="utf-8"))
 
-
+@lru_cache(maxsize=None)
 def models() -> dict[str, ModelPrice]:
     return {
         name: ModelPrice(name=name, provider=p["provider"], input=p["input"],
@@ -48,7 +48,7 @@ def get_price(model: str) -> ModelPrice:
 
 
 def cost(input_tokens: int, output_tokens: int, model: str) -> dict:
-    """Return a cost breakdown in USD (and INR, because 'kharch')."""
+    """Return a cost breakdown"""
     p = get_price(model)
     input_usd = input_tokens / PER_MILLION * p.input
     output_usd = output_tokens / PER_MILLION * p.output
@@ -63,7 +63,7 @@ def cost(input_tokens: int, output_tokens: int, model: str) -> dict:
 
 
 def compare_models(input_tokens: int, output_tokens: int) -> list[dict]:
-    """Cost of the same request across every known model, cheapest first."""
+    """Cost of the same request across every known model"""
     rows = []
     for name, p in models().items():
         c = cost(input_tokens, output_tokens, name)

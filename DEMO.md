@@ -7,7 +7,8 @@
 3. Ask Claude: *"Call tokenkharch status."* `live_llm: true` means the key is loaded, `false` means demo mode. Both are fine. Know which one you're in.
 4. Reset the ledger so the usage report starts at zero: delete `data/tokenkharch.db` (it is recreated on the next call).
 5. (Optional, for ChatGPT) Start `python server.py --http` and `ngrok http 8000`, and have the connector set up in ChatGPT.
-6. Have VS Code open on `server.py` and `tokenkharch/service.py`.
+6. (For the Ollama step) Make sure Ollama is running and `ollama list` shows `llama3.2:3b`. Run it once beforehand: the first call loads the model and can take 10+ seconds.
+7. Have VS Code open on `server.py` and `tokenkharch/service.py`.
 
 Keep this sample prompt ready to paste:
 
@@ -25,6 +26,7 @@ Keep this sample prompt ready to paste:
 | 2 | "What would this cost at a million calls?" | "One call costs a fraction of a cent, which is why nobody cares. At a million calls it's real money." |
 | 3 | "Now optimize it." | "`optimize_prompt` makes the rewrite much smaller. Each rule's saving is **measured** by re-tokenizing, not estimated." |
 | 4 | "Optimize it again in safe mode." | "Safe mode only makes edits that keep the meaning. Aggressive also strips politeness and role-play. It's a trade-off the user controls." |
+| 4b | "Now optimize it with the local LLM." | "`optimize_prompt_local` runs the rules, then a local Llama 3.2 model through Ollama. It's free and the prompt never leaves my machine. The LLM's output isn't trusted: it's re-tokenized and rejected if it's longer, drops a number or code, or adds content, which is what a small model does when it answers the prompt instead of compressing it." Point at `local_llm.accepted` and `reason`. |
 | 5 | "Which model is cheapest for this request?" | "The same request priced across 11 models. Picking the model is usually a bigger cost lever than editing the prompt." |
 | 6 | "Send the optimized prompt to Claude." | "`send_to_claude` optimizes, calls Claude, and logs the *billed* token counts from the API response." (In demo mode: "Without a key it runs in demo mode, so the demo never breaks.") |
 | 7 | "Show my tokenkharch usage report." | "Every call goes into SQLite: spend, tokens saved, per day and per model." |
@@ -34,10 +36,19 @@ Keep this sample prompt ready to paste:
 ## Questions you'll likely get
 
 **How do you count tokens accurately when every provider has a different tokenizer?**
-Three levels. For Claude, Anthropic's `count_tokens` endpoint gives the exact number. Otherwise tiktoken `o200k_base`, which is exact for GPT-4o/5 and a close proxy for others. If tiktoken can't load its vocabulary (offline), there's a heuristic of roughly one token per short word or punctuation mark, with long words split every ~4 characters. The `status` tool and the analysis output say which method was used.
+Two levels. For Claude, Anthropic's `count_tokens` endpoint gives the exact number. Otherwise tiktoken `o200k_base`, which is exact for GPT-4o/5 and a close proxy for others. The `status` tool and the analysis output say which method was used.
 
 **Does the optimizer change the meaning of the prompt?**
 Safe mode only does edits that keep the meaning: removing exact duplicate sentences, wordy-to-concise phrases ("in order to" → "to") and whitespace. Aggressive mode removes politeness and role-play. Modern models follow instructions without them, but that's a judgement call, so it's opt-in. To *prove* it, I'd add an eval: run both prompts on a test set and compare the outputs.
+
+**Why use a local LLM, and why Ollama?**
+An LLM can restructure a sentence, which rules can't, but calling a paid API to save tokens defeats the purpose. A local model through Ollama costs nothing per call, needs no API key, and keeps the prompt private. I call Ollama's REST API with the standard library (`urllib`), so it adds no dependency, and temperature 0 makes rewrites repeatable. Savings on my 8-prompt benchmark went from 15% (safe rules) to 51% (rules + `llama3.2:3b`), and `scripts/benchmark.py` reproduces the numbers.
+
+**How do you stop the local LLM from changing the meaning?**
+The rules run first, then the LLM, then a guard. The rewrite must be shorter by tiktoken count, keep every number, quoted string, code span and `{placeholder}`, add none of its own, and have most of its words come from the original. On the first real run the 3B model *answered* two prompts (it wrote code and made-up JSON). Wrapping the prompt in `<prompt>` tags fixed that, and the "added content" check now catches any that slip through. Its known gap: it can't detect a dropped instruction made of ordinary words. The real fix is an output eval: send both prompts to the target model and compare the answers.
+
+**Why not use Ollama to count tokens?**
+Every model family has its own tokenizer. Ollama reports `prompt_eval_count` from *Llama's* tokenizer, so it can't give Claude, GPT or Gemini counts. The output shows it next to the tiktoken count (`local_tokenizer_prompt_tokens`), which is a good illustration of why counts differ between providers. Ollama's number also includes the system prompt and chat template.
 
 **Why rule-based instead of asking an LLM to compress the prompt?**
 Rules are deterministic, free, instant and explainable: every change can be listed. An LLM rewrite costs tokens to save tokens, and it can drift in meaning. The next step would be a hybrid: rules first, then an optional cheap-model rewrite behind an eval check.

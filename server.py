@@ -36,6 +36,15 @@ def optimize_prompt(prompt: str, mode: str = "aggressive", model: Optional[str] 
 
 
 @mcp.tool
+def optimize_prompt_local(prompt: str, mode: str = "safe", model: Optional[str] = None,
+                          local_model: Optional[str] = None) -> dict:
+    """Two-stage rewrite: the rule-based optimizer, then a local Ollama model (free, prompt stays on this machine)
+    compresses it further. The rewrite is re-tokenized and only kept if it is shorter and keeps every number,
+    quoted string, code span and placeholder. Needs Ollama running with the model pulled (see `status`)."""
+    return service.optimize_prompt_local(prompt, mode, model, local_model)
+
+
+@mcp.tool
 def compare_cost(original_prompt: str, optimized_prompt: str, model: Optional[str] = None,
                  expected_output_tokens: int = 500) -> dict:
     """Side-by-side token and USD cost of two prompt versions."""
@@ -78,7 +87,8 @@ def list_models() -> list[dict]:
 
 @mcp.tool
 def status() -> dict:
-    """Which tokenizer is active, whether a real Claude API key is loaded (else demo mode), and the default model."""
+    """Which tokenizer is active, whether a real Claude API key is loaded (else demo mode), the default model,
+    and whether a local Ollama server is reachable (and which models it has)."""
     return service.status()
 
 

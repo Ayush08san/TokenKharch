@@ -1,3 +1,7 @@
+# ToDo : No failSafe yet for long 1 line promp without any break. Passes unstructured check
+
+
+
 from __future__ import annotations
 
 import re
@@ -26,7 +30,7 @@ class Issue:
     type: str
     severity: str        # high | medium | low
     description: str
-    token_impact: int    # tokens attributable to this pattern
+    token_impact: int    # tokens according to pattern
     examples: list[str]
 
     def to_dict(self) -> dict:

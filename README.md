@@ -2,7 +2,7 @@
 
 **Know your token *kharch* (spend) before you hit send.**
 
-TokenKharch is an MCP server that counts the tokens in an LLM prompt, prices it across 11 models (Claude, GPT and Gemini), finds the patterns that waste tokens, rewrites the prompt to be leaner, and keeps a ledger of what you spent and saved.
+TokenKharch is an MCP server that counts the tokens in an LLM prompt, prices it across 11 models (Claude, GPT and Gemini), finds the patterns that waste tokens, rewrites the prompt to be leaner (with rules, plus an optional local LLM via Ollama), and keeps a ledger of what you spent and saved.
 
 You use it from any MCP client: Claude Desktop, Claude Code, claude.ai, ChatGPT, Cursor and others. You ask the assistant to analyze a prompt, and it calls TokenKharch's tools.
 
@@ -21,19 +21,20 @@ LLM APIs bill per token, and prompts pick up waste: polite filler, role-play boi
  └──────┬───────┘
  tokenkharch/service.py      ← use-case layer (all the logic)
        ┌────────────┬─────────┼──────────┬──────────────┐
-  tokenizer.py  pricing.py  analyzer.py  optimizer.py  llm.py      store.py
-  tiktoken →    pricing.json regex rules  rule pipeline Anthropic   SQLite ledger
-  heuristic     (editable)   + measured   + word diff   SDK + demo
-  fallback                   impact                     mode
+  tokenizer.py  pricing.py  analyzer.py  optimizer.py  llm.py      local_llm.py  store.py
+  tiktoken      pricing.json regex rules  rule pipeline Anthropic   Ollama REST   SQLite ledger
+  o200k_base    (editable)   + measured   + word diff   SDK + demo  (stdlib HTTP)
+                             impact                     mode
 ```
 
 Design decisions worth knowing:
 
 - **Thin MCP adapter.** `server.py` only declares tools. The logic lives in `tokenkharch/service.py`, so it can be tested without a client.
 - **Savings are measured, not guessed.** Each optimizer rule re-tokenizes the text before and after, so "−22 tokens" is a real count.
-- **Three levels of token counting.** Anthropic's `count_tokens` endpoint (exact for Claude) → tiktoken `o200k_base` (exact for GPT-4o/5) → an offline heuristic. It still works with no internet.
+- **Two levels of token counting.** Anthropic's `count_tokens` endpoint (exact for Claude) → tiktoken `o200k_base` (exact for GPT-4o/5, a proxy for others). tiktoken downloads its vocabulary on first use, after which it's cached and works offline.
 - **Demo mode.** With no `ANTHROPIC_API_KEY`, `send_to_claude` returns a simulated reply. Every other tool works without a key.
 - **Prices live in JSON** (`tokenkharch/pricing.json`) with sources and a date. You update them without touching code.
+- **Hybrid optimizer with a local LLM.** `optimize_prompt_local` runs the rules first, then asks a local Ollama model (default `llama3.2:3b`) to compress the result. The prompt never leaves the machine and the rewrite costs $0. The output is re-tokenized with tiktoken and **only accepted** if it is shorter, keeps every number, quoted string, code span and `{placeholder}`, adds none of its own, and most of its words appear in the original. Otherwise the rules-only result is returned, with the reason.
 - **Two optimizer modes.** `safe` only makes meaning-preserving edits (dedupe, wordy→concise, whitespace). `aggressive` also strips filler and role-play boilerplate.
 
 ## Setup (Windows PowerShell)
@@ -44,7 +45,11 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 copy .env.example .env      # then put your real key in .env (optional, only send_to_claude uses it)
-python -m pytest -q         # 11 tests
+python -m pytest -q         
+
+# Optional: local LLM rewrite (https://ollama.com)
+ollama pull llama3.2:3b     # any Ollama model works; set TOKENKHARCH_OLLAMA_MODEL to change the default
+python scripts/benchmark.py --local
 ```
 
 ## Run
@@ -103,16 +108,29 @@ Then ask the assistant: *"Use tokenkharch to analyze and optimize this system pr
 |---|---|
 | `analyze_prompt` | Tokens, USD/INR cost, waste issues, efficiency score, cheapest models |
 | `optimize_prompt` | Leaner rewrite plus measured savings per rule |
+| `optimize_prompt_local` | Rules + local Ollama rewrite, with a guard that rejects unsafe rewrites |
 | `compare_cost` | Token and cost difference between two prompt versions |
 | `send_to_claude` | Optimize, call Claude, return the answer with billed usage, and log it |
 | `read_document` | Load a local file to use as `document` context |
 | `usage_report` | Ledger totals by model and day |
 | `list_models` | Supported models and prices |
-| `status` | Active tokenizer, live vs demo mode, default model |
+| `status` | Active tokenizer, live vs demo mode, default model, Ollama reachability and models |
+
+## Benchmark
+
+`python scripts/benchmark.py --local` on 8 sample prompts (tiktoken `o200k_base` counts):
+
+| Optimizer | Tokens | Saved |
+|---|---|---|
+| Rules, safe mode | 230 → 195 | 15.2% |
+| Rules, aggressive mode | 230 → 156 | 32.2% |
+| Rules (safe) + `llama3.2:3b` | 230 → 112 | 51.3% (6/8 rewrites accepted) |
+
+Eight hand-written prompts is a small sample, and savings depend heavily on how wordy the input is: already-tight prompts save close to 0%.
 
 ## Limitations and next steps
 
-- The optimizer is rule-based: predictable and free, but it can't restructure a prompt. Next step: an LLM-based rewrite (using a cheap model like Haiku), checked by comparing the answers to the original and optimized prompts on a small eval set.
+- The local-LLM guard is a heuristic. It catches dropped numbers, quotes and code, and rewrites where the model answered the prompt, but not a dropped instruction made of plain words (in the benchmark, `llama3.2:3b` dropped "do not add commentary" and the rewrite was still accepted). It can also be over-strict ("five" → "5" is rejected). Next step: an eval that runs the original and rewritten prompts through the target model and compares the answers.
 - Token counts for Gemini and older Claude models are approximations (tiktoken proxy).
 - Prompt caching savings (cache reads cost about 10% of input on Claude) aren't modelled yet. That would be a natural next feature.
 - The HTTP transport has no auth. Adding OAuth or a bearer token would be needed before hosting it anywhere public.
