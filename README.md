@@ -12,20 +12,8 @@ LLM APIs bill per token, and prompts pick up waste: polite filler, role-play boi
 
 ## Architecture
 
-```
- MCP client (Claude, ChatGPT, Cursor…)
-        │  stdio  or  streamable HTTP (/mcp)
-        ▼
- ┌──────────────┐
- │  server.py   │  FastMCP adapter: tool definitions only
- └──────┬───────┘
- tokenkharch/service.py      ← use-case layer (all the logic)
-       ┌────────────┬─────────┼──────────┬──────────────┐
-  tokenizer.py  pricing.py  analyzer.py  optimizer.py  llm.py      local_llm.py  store.py
-  tiktoken      pricing.json regex rules  rule pipeline Anthropic   Ollama REST   SQLite ledger
-  o200k_base    (editable)   + measured   + word diff   SDK + demo  (stdlib HTTP)
-                             impact                     mode
-```
+<img width="2549" height="1108" alt="mermaid-diagram-2026-10-11-213709" src="https://github.com/user-attachments/assets/f3a6077c-8d6f-4478-a1a2-d1feee7a1f2d" />
+
 
 Design decisions worth knowing:
 
